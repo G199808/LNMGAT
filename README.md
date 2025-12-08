@@ -1,15 +1,8 @@
 # LNMGAT
 **L**aplacian Regularized **N**egative-Mining Graph **A**ttention Ne**t**work  
 
-Official PyTorch + PyTorch-Geometric implementation of the paper:  
-
 **LNMGAT: A Laplacian Regularized Negative-Mining Graph Attention Network for Robust Drug–Target Interaction Prediction Under Multi-Scenario Cold-Start Settings**  
 Shuai Guo, Weichi Liu, Jie Zou, Tao Ban, Gaifang Dong*  
-*Inner Mongolia Agricultural University, 2025 (Under Review)*  
-
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue)](https://www.python.org/)
-[![PyTorch](https://img.shields.io/badge/PyTorch-2.0%2B-orange)](https://pytorch.org/)
 
 ## Key Features
 - **Zero experimentally verified negative samples** are used throughout training and testing  
