@@ -1,0 +1,1 @@
+Yamanishi (http://web.kuicr.kyoto-u.ac.jp/supp/yoshi/drugtarget/), Davis and KIBA ( https://www.kaggle.com/datasets/rajaryan2315/davis-and-kiba-datasets).
