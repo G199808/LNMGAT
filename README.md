@@ -1,266 +1,141 @@
-# LNMGAT: Laplacian Regularized Pseudo-Negative Mining Graph Attention Network
+# LNMGAT Reproducibility Package
 
-This repository provides the source code, processed datasets, running scripts, pretrained checkpoints, and reproducibility instructions for the paper:
+This repository provides the source code required to reproduce the LNMGAT drug-target interaction prediction experiments from the input matrices. This no-checkpoint release intentionally does not generate, save, load, or distribute `.pt` model checkpoint files. Instead, all reported metrics are reproduced by rerunning the deterministic training and evaluation pipeline from scratch.
 
-**LNMGAT: A Laplacian Regularized Pseudo-Negative Mining Graph Attention Network for Robust Drug–Target Interaction Prediction Under Multi-Scenario Cold-Start Settings**
+## Files
 
-LNMGAT is a drug–target interaction prediction framework that integrates LapRLS-guided reliable pseudo-negative mining with dual graph attention encoders. The model is evaluated under warm-start, drug cold-start, target cold-start, and pair cold-start settings.
+| File | Purpose |
+| --- | --- |
+| `lnmgat_model.py` | Reusable implementation of LapRLS, the dual-branch graph attention model, data loading utilities, evaluation metrics, and prediction-table export. |
+| `train.py` | Trains and evaluates LNMGAT under warm-start, new-drug, new-target, and new-both settings. It exports metrics and prediction tables only. |
+| `test.py` | Testing entry point that reruns the same deterministic evaluation protocol from scratch. It does not require checkpoint files. |
+| `calculate_drug_similarity.py` | Builds a drug similarity matrix from SMILES strings using Morgan fingerprints and Tanimoto similarity. |
+| `calculate_target_similarity.py` | Builds a target similarity matrix from protein sequences using Smith-Waterman local alignment. |
+| `requirements.txt` | Python package requirements. |
+| `REVIEWER_RESPONSE_CODE_AVAILABILITY.md` | Suggested response to the reviewer and revised Code Availability wording. |
 
----
+## Expected data layout
 
-## 1. Repository Structure
+Place the benchmark matrices under `./data_DTI` by default:
 
 ```text
-LNMGAT/
-├── data_DTI/
-│   ├── yamanishi/
-│   ├── davis/
-│   ├── kiba/
-│   └── bindingdb/
-├── checkpoints/
-│   ├── yamanishi/
-│   ├── davis/
-│   ├── kiba/
-│   └── bindingdb/
-├── scripts/
-│   ├── preprocess/
-│   ├── train/
-│   ├── test/
-│   └── reproduce_tables/
-├── output/
-├── main.py
-├── model.py
-├── train.py
-├── test.py
-├── reproduce_tables.py
-├── requirements.txt
-├── environment.yml
-└── README.md
-The main folders are organized as follows:
-·data_DTI/: processed benchmark datasets and similarity matrices.
-·checkpoints/: pretrained model checkpoints for each benchmark dataset.
-·scripts/preprocess/: scripts for dataset preparation and preprocessing.
-·scripts/train/: scripts for training LNMGAT and reproduced baselines.
-·scripts/test/: scripts for testing pretrained models.
-·scripts/reproduce_tables/: scripts for reproducing the tables reported in the manuscript.
-·output/: generated fold-level metrics, mean performance summaries, and prediction files.
-
-2. Environment Setup
-We recommend using Conda to create an isolated environment.
-conda create -n lnmgat python=3.9
-conda activate lnmgat
-Install dependencies using:
-pip install -r requirements.txt
-Alternatively, the environment can be created using:
-conda env create -f environment.yml
-conda activate lnmgat
-Recommended dependency versions:
-python==3.9
-numpy==1.24.4
-pandas==2.0.3
-scipy==1.10.1
-scikit-learn==1.3.0
-torch==2.0.1
-torch-geometric==2.3.1
-tqdm==4.66.1
-matplotlib==3.7.2
-Please install the PyTorch and PyTorch Geometric versions compatible with your CUDA version. For CPU-only execution, install the CPU versions of PyTorch and PyTorch Geometric.
-
-3. Dataset Preparation
-The processed benchmark datasets are provided under:
 data_DTI/
-Each dataset folder contains the interaction matrix, drug similarity matrices, target similarity matrices, and interaction-sharing similarity matrices.
-Expected file examples:
-data_DTI/davis/
-├── interaction_0_davis.csv
-├── drug_similarity_davis.csv
-├── drug_IS_0_davis.csv
-├── target_similarity_davis.csv
-└── target_IS_0_davis.csv
-If the processed datasets are already provided, no additional preprocessing is required.
-To regenerate processed files from raw data, run:
-python scripts/preprocess/prepare_yamanishi.py
-python scripts/preprocess/prepare_davis.py
-python scripts/preprocess/prepare_kiba.py
-python scripts/preprocess/prepare_bindingdb.py
+  drug_similarity_davis.csv
+  drug_IS_0_davis.csv
+  target_similarity_davis.csv
+  target_IS_0_davis.csv
+  interaction_0_davis.csv
+```
 
-4. Pretrained Checkpoints
-Pretrained checkpoints are organized by dataset under:
-checkpoints/
-Expected checkpoint structure:
-checkpoints/
-├── yamanishi/
-│   ├── fold1.pt
-│   ├── fold2.pt
-│   ├── fold3.pt
-│   ├── fold4.pt
-│   ├── fold5.pt
-│   └── config.json
-├── davis/
-│   ├── fold1.pt
-│   ├── fold2.pt
-│   ├── fold3.pt
-│   ├── fold4.pt
-│   ├── fold5.pt
-│   └── config.json
-├── kiba/
-│   ├── fold1.pt
-│   ├── fold2.pt
-│   ├── fold3.pt
-│   ├── fold4.pt
-│   ├── fold5.pt
-│   └── config.json
-└── bindingdb/
-    ├── fold1.pt
-    ├── fold2.pt
-    ├── fold3.pt
-    ├── fold4.pt
-    ├── fold5.pt
-    └── config.json
-If checkpoint files exceed the GitHub file-size limit, they are provided through the GitHub Release page or an external archival link. Please download the checkpoint files and place them in the corresponding dataset folder under checkpoints/.
-Example:
-mkdir -p checkpoints/davis
-# Download fold1.pt to fold5.pt and config.json
-# Place them under checkpoints/davis/
+The default filenames follow this pattern:
 
-5. Training LNMGAT
-To train LNMGAT on each benchmark dataset, run:
-python train.py --dataset yamanishi --seed 42 --n_splits 5
-python train.py --dataset davis --seed 42 --n_splits 5
-python train.py --dataset kiba --seed 42 --n_splits 5
-python train.py --dataset bindingdb --seed 42 --n_splits 5
-Main arguments:
---dataset       Dataset name: yamanishi, davis, kiba, or bindingdb
---seed          Random seed
---n_splits      Number of cross-validation folds
---epochs        Number of training epochs
---batch_size    Batch size
---hidden_dim    Hidden dimension
---heads         Number of GAT attention heads
---knn_k         Number of k-nearest neighbors
---neg_ratio     Training pseudo-negative ratio
-Example:
-python train.py --dataset davis --seed 42 --n_splits 5 --epochs 300 --batch_size 512
-Training outputs will be saved under:
-output/
-checkpoints/
+```text
+drug_similarity_<dataset>.csv
+drug_IS_<label>_<dataset>.csv
+target_similarity_<dataset>.csv
+target_IS_<label>_<dataset>.csv
+interaction_<label>_<dataset>.csv
+```
 
-6. Testing Pretrained Models
-To evaluate pretrained checkpoints, run:
-python test.py --dataset yamanishi --checkpoint_dir checkpoints/yamanishi/
-python test.py --dataset davis --checkpoint_dir checkpoints/davis/
-python test.py --dataset kiba --checkpoint_dir checkpoints/kiba/
-python test.py --dataset bindingdb --checkpoint_dir checkpoints/bindingdb/
-The test script generates fold-level metrics and summary results under:
-output/
-Example output files:
+Each matrix should be a CSV file with row identifiers in the first column and column identifiers in the header. The interaction matrix must have shape `[n_drugs, n_targets]`, with known positive interactions encoded as `1` and unknown pairs encoded as `0`.
+
+## Environment setup
+
+```bash
+conda create -n lnmgat python=3.10 -y
+conda activate lnmgat
+pip install -r requirements.txt
+```
+
+PyTorch Geometric must match the installed PyTorch and CUDA versions. Follow the official PyTorch Geometric installation command for your environment if the generic installation fails.
+
+## Optional similarity construction
+
+Drug similarity from SMILES:
+
+```bash
+python calculate_drug_similarity.py
+```
+
+Target similarity from protein sequences:
+
+```bash
+python calculate_target_similarity.py
+```
+
+Adjust the input file paths and column names inside these scripts if your raw Excel files use different names.
+
+## Train and evaluate from scratch
+
+```bash
+python train.py \
+  --dataset davis \
+  --label 0 \
+  --data-dir ./data_DTI \
+  --output-dir ./output \
+  --epochs 300 \
+  --n-splits 5 \
+  --seed 42
+```
+
+The script writes:
+
+```text
 output/LNMGAT_Fold_Metrics_davis.csv
 output/LNMGAT_Mean_Metrics_davis.csv
 output/LNMGAT_Predictions_davis_Warm-Start.csv
 output/LNMGAT_Predictions_davis_New-Drug.csv
 output/LNMGAT_Predictions_davis_New-Target.csv
 output/LNMGAT_Predictions_davis_New-Both.csv
+output/LNMGAT_Config_davis.json
+```
 
-7. Reproducing Main Tables
-The following commands reproduce the main performance tables reported in the manuscript.
-Table 4: Yamanishi dataset
-python reproduce_tables.py --table 4 --dataset yamanishi
-Table 5: Davis dataset
-python reproduce_tables.py --table 5 --dataset davis
-Table 6: KIBA dataset
-python reproduce_tables.py --table 6 --dataset kiba
-Table 7: BindingDB dataset
-python reproduce_tables.py --table 7 --dataset bindingdb
-Table 9: Ablation study on Davis
-python reproduce_tables.py --table 9 --dataset davis --ablation
-The reproduced tables will be saved under:
-output/tables/
+No model checkpoint file is written.
 
-8. Reproducing Ablation Experiments
-The ablation study compares the full LNMGAT model with two representative variants:
-·Full LNMGAT: full model with LapRLS-guided pseudo-negative mining and dual GAT encoders.
-·LapRLS_Only: prediction using only the LapRLS-based similarity propagation module.
-·GAT_Only: GAT model using random pseudo-negative sampling instead of LapRLS-guided pseudo-negative mining.
-Run:
-python scripts/reproduce_tables/reproduce_table9_ablation.py --dataset davis --seed 42 --n_splits 5
-Or:
-python reproduce_tables.py --table 9 --dataset davis --ablation
+## Testing entry point
 
-9. Reproducing Baseline Comparisons
-All baseline methods reported in the manuscript were reproduced under the same preprocessing, data partitions, cold-start scenario definitions, and pseudo-negative sampling protocol.
-To reproduce baseline results, run:
-python scripts/train/train_baselines.py --dataset yamanishi --n_splits 5
-python scripts/train/train_baselines.py --dataset davis --n_splits 5
-python scripts/train/train_baselines.py --dataset kiba --n_splits 5
-python scripts/train/train_baselines.py --dataset bindingdb --n_splits 5
-To summarize baseline and LNMGAT results:
-python scripts/reproduce_tables/summarize_main_results.py
+`test.py` is provided for reviewers who expect a separate testing script. In this no-checkpoint release, it reruns the same deterministic cross-validation and evaluation protocol from scratch:
 
-10. Evaluation Scenarios
-LNMGAT is evaluated under four prediction scenarios:
-1.Warm Start
-Both the drug and the target are observed in the supervised training pairs.
-2.Drug Cold Start
-The drug is absent from the supervised training pairs, while the target is observed.
-3.Target Cold Start
-The target is absent from the supervised training pairs, while the drug is observed.
-4.Pair Cold Start
-Neither the drug nor the target is observed in the supervised training pairs.
-For each fold, test interaction labels are masked before LapRLS-based pseudo-negative mining. The drug-drug and target-target similarity matrices are used as fixed side information.
+```bash
+python test.py \
+  --dataset davis \
+  --label 0 \
+  --data-dir ./data_DTI \
+  --output-dir ./reproduced_results \
+  --epochs 300 \
+  --n-splits 5 \
+  --seed 42
+```
 
-11. Output Metrics
-The following metrics are reported:
-AUPR
-AUROC
-F1-score
-Precision
-Recall
-The main tables report mean and standard deviation over 5-fold cross-validation.
+This produces the same output file types as `train.py`, under the selected output directory.
 
-12. Statistical Significance
-For comparisons with reproduced baseline methods, statistical significance is assessed using fold-level performance values. LNMGAT is compared with the strongest competing baseline in each setting.
-Significance markers:
-*  p < 0.05
-** p < 0.01
-The exact statistical test used in the manuscript is specified in the table notes.
+## Running other datasets
 
-13. Random Seeds and Reproducibility
-The default random seed is:
-42
-To improve reproducibility, the code fixes random seeds for:
-·Python random
-·NumPy
-·PyTorch
-·CUDA, when available
-Example:
-python train.py --dataset davis --seed 42 --n_splits 5
+Use the corresponding dataset name and input files:
 
-14. Hardware
-Experiments can be run on either CPU or GPU. GPU acceleration is recommended.
-The default device is automatically selected:
-cuda if torch.cuda.is_available() else cpu
-Recommended configuration:
-GPU: NVIDIA GPU with at least 8 GB memory
-CPU: 8 cores or above
-RAM: 32 GB or above
-For large datasets such as BindingDB, more GPU memory and system RAM are recommended.
+```bash
+python train.py --dataset kiba --label 0 --data-dir ./data_DTI --output-dir ./output_kiba
+python train.py --dataset bindingdb --label 0 --data-dir ./data_DTI --output-dir ./output_bindingdb
+```
 
-15. Citation
-If you use this repository, please cite:
-Guo S, Liu W, Zou J, Ban T, Dong G.
-LNMGAT: A Laplacian Regularized Pseudo-Negative Mining Graph Attention Network
-for Robust Drug-Target Interaction Prediction Under Multi-Scenario Cold-Start Settings.
+If your filenames differ from the default pattern, pass explicit filenames:
 
-16. Contact
-For questions, please contact:
-Gaifang Dong
-College of Computer and Information Engineering
-Inner Mongolia Agricultural University
-Email: donggf@imau.edu.cn
+```bash
+python train.py \
+  --dataset davis \
+  --label 0 \
+  --data-dir ./data_DTI \
+  --drug-sim-file-1 custom_drug_similarity.csv \
+  --drug-sim-file-2 custom_drug_integrated_similarity.csv \
+  --target-sim-file-1 custom_target_similarity.csv \
+  --target-sim-file-2 custom_target_integrated_similarity.csv \
+  --interaction-file custom_interaction.csv
+```
 
-17. Notes
-·The processed datasets are provided for reproducibility.
-·Pretrained checkpoints are stored under checkpoints/ or provided through the repository release page.
-·Fold-level results and summary tables are saved under output/.
-·The docking analysis in the manuscript provides auxiliary in silico support and should not be interpreted as wet-lab validation.
+## Reproducibility notes
 
+1. The random seed is controlled by `--seed` and is also used for the drug, target, and positive-pair split generators.
+2. LapRLS scores are computed fold locally after masking the held-out regions, which avoids using held-out labels during pseudo-negative mining.
+3. Pseudo-negative pairs are selected from unknown pairs with the lowest fold-local LapRLS scores.
+4. Warm-start, new-drug, new-target, and new-both evaluations are all produced within the same run.
+5. The manuscript Code Availability statement should not claim that pretrained checkpoint files are provided unless such files are actually uploaded and linked.
